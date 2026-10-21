@@ -1,0 +1,41 @@
+
+body {
+  font-family: system-ui;
+  margin: 2rem auto;
+  max-width: 750px;
+  padding: 0 1rem;
+  background: #f7f8fa;
+  color: #182230;
+}
+
+h1 {
+  margin-bottom: 0.2rem;
+}
+
+.card {
+  background: white;
+  border: 1px solid #dce2e8;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin: 1rem 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.65rem;
+  border-bottom: 1px solid #eee;
+}
+
+button {
+  background: #2255b5;
+  color: white;
+  border: 0;
+  border-radius: 7px;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+}
