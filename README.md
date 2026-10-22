@@ -89,6 +89,8 @@ Open http://localhost:3000 in your browser.
 2. Click **Reload results** to see the latest grades.
 3. Click **Log out** when finished.
 
+The logged in user can only see their own grades. That is intended behavior. 
+
 **7. Remove the containers**
 
 ```bash
