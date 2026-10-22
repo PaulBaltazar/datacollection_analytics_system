@@ -100,7 +100,7 @@ docker compose down
 This retains the database volumes. 
 **Do not add `-v` unless you intend to delete the stored users and grades.**
 
-## Running tests
+## Running tests and healthchecks
 
 Make sure all the containers are running first:
 
@@ -114,10 +114,18 @@ docker compose up --build -d
 docker compose run --rm --no-deps -v "./auth-service/tests:/app/tests:ro" auth-service python -m pytest tests -v -p no:cacheprovider
 ```
 
+```bash
+docker compose exec auth-service python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:5000/health').read().decode())"
+```
+
 **Enter data web app**
 
 ```bash
 docker compose run --rm --no-deps -v "./enter-data/tests:/app/tests:ro" enter-data python -m pytest tests -v -p no:cacheprovider
+```
+
+```powershell
+curl.exe -i http://localhost:8080/health
 ```
 
 **Analytics service**
@@ -126,10 +134,18 @@ docker compose run --rm --no-deps -v "./enter-data/tests:/app/tests:ro" enter-da
 docker compose run --rm --no-deps -v "./analytics-service/tests:/app/tests:ro" analytics-service python -m pytest tests -v -p no:cacheprovider
 ```
 
+```bash
+docker compose exec analytics-service python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:5002/health', timeout=3).read().decode())"
+```
+
 **Show results web app**
 
 ```bash
 docker compose run --rm --no-deps -v "./show-results/tests:/app/tests:ro" show-results node --test tests/test_results.js
+```
+
+```powershell
+curl.exe -i http://localhost:3000/health
 ```
 
 ## CI/CD pipeline
@@ -138,7 +154,7 @@ GitHub Actions automatically runs the pipeline when changes are pushed to **main
 
 The pipeline:
 
-1. Builds the four application images and runs their unit tests.
+1. Builds the four application images and runs their unit tests. (The database images are pulled from the Docker Hub)
 2. Scans the images using Trivy, failing on fixable HIGH or CRITICAL vulnerabilities.
 3. After all checks pass on main, builds and publishes AMD64 and ARM64 images to GitHub Container Registry (GHCR), tagged with latest and the commit SHA.
 
