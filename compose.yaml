@@ -50,6 +50,8 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      # Gunicorn worker processes (performance test: 1 = baseline, 4 = improvement)
+      WEB_CONCURRENCY: ${GUNICORN_WORKERS:-1}
     depends_on:
       mysql:
         condition: service_healthy
@@ -74,6 +76,7 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       AUTH_URL: http://auth-service:5000
+      WEB_CONCURRENCY: ${GUNICORN_WORKERS:-1}
     depends_on:
       mysql:
         condition: service_healthy

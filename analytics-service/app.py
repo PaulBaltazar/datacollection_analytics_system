@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timezone
 
 import pymysql
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 
@@ -32,24 +32,35 @@ def get_mysql_connection():
     )
 
 
-def read_grades():
+def read_grades(user_id=None):
+    """Read grades for every user, or only for one user when user_id is given.
+
+    Reading one user uses the (user_id, course_name) index on grades, so the cost
+    no longer grows with the total number of users and grades in the system.
+    """
+    query = """
+        SELECT
+            u.id AS user_id,
+            u.username,
+            g.id AS grade_id,
+            g.course_name,
+            g.grade
+        FROM users AS u
+        LEFT JOIN grades AS g ON g.user_id = u.id
+    """
+    params = ()
+
+    if user_id is not None:
+        query += " WHERE u.id = %s"
+        params = (user_id,)
+
+    query += " ORDER BY u.id, g.course_name, g.id"
+
     connection = get_mysql_connection()
 
     try:
         with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT
-                    u.id AS user_id,
-                    u.username,
-                    g.id AS grade_id,
-                    g.course_name,
-                    g.grade
-                FROM users AS u
-                LEFT JOIN grades AS g ON g.user_id = u.id
-                ORDER BY u.id, g.course_name, g.id
-                """
-            )
+            cursor.execute(query, params)
             return cursor.fetchall()
     finally:
         connection.close()
@@ -121,8 +132,19 @@ def health():
 
 @app.post("/refresh")
 def refresh():
+    # Optional {"user_id": N}: recalculate only that user instead of everyone.
+    data = request.get_json(silent=True) or {}
+    user_id = data.get("user_id") if isinstance(data, dict) else None
+
+    if user_id is not None and (
+        isinstance(user_id, bool)
+        or not isinstance(user_id, int)
+        or user_id <= 0
+    ):
+        return jsonify(error="user_id must be a positive integer"), 400
+
     try:
-        rows = read_grades()
+        rows = read_grades(user_id)
         results = calculate_results(rows)
 
         for result in results:
