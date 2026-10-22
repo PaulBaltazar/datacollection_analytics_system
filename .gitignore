@@ -12,3 +12,10 @@ node_modules/
 .vscode/
 .DS_Store
 Thumbs.db
+
+.coverage
+htmlcov/
+coverage/
+
+# Logs
+*.log
