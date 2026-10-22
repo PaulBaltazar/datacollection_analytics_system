@@ -131,3 +131,15 @@ docker compose run --rm --no-deps -v "./analytics-service/tests:/app/tests:ro" a
 ```bash
 docker compose run --rm --no-deps -v "./show-results/tests:/app/tests:ro" show-results node --test tests/test_results.js
 ```
+
+## CI/CD pipeline
+
+GitHub Actions automatically runs the pipeline when changes are pushed to **main**.
+
+The pipeline:
+
+1. Builds the four application images and runs their unit tests.
+2. Scans the images using Trivy, failing on fixable HIGH or CRITICAL vulnerabilities.
+3. After all checks pass on main, builds and publishes AMD64 and ARM64 images to GitHub Container Registry (GHCR), tagged with latest and the commit SHA.
+
+Scan reports are available under the run’s **Artifacts**, and published images appear under **Packages**.
