@@ -2,6 +2,9 @@
 services:
   mongodb:
     image: mongo:7
+    cpus: 1.0
+    mem_limit: 512m
+    restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
@@ -19,6 +22,9 @@ services:
 
   analytics-service:
     build: ./analytics-service
+    cpus: 0.5
+    mem_limit: 256m
+    restart: unless-stopped
     environment:
       MONGO_URI: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017/?authSource=admin
       MONGO_DB: student_analytics
@@ -40,6 +46,9 @@ services:
 
   show-results:
     build: ./show-results
+    cpus: 0.5
+    mem_limit: 256m
+    restart: unless-stopped
     environment:
       MONGO_URI: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017/?authSource=admin
       MONGO_DB: student_analytics
