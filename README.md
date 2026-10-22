@@ -6,95 +6,126 @@ This project is for **ACIT 3495 – Advanced IT Infrastructure at BCIT**.
 
 Our project is a student grades system that uses Docker containers to collect, calculate, store, and display student grades.
 
-The system uses Python, JavaScript, MySQL, and MongoDB.
-
-**Current progress:** The Analytics Service, MongoDB, and Show Results web app are working with sample data. MySQL and authentication will be added soon.
-
 ## Technologies Used
 
 - **Docker and Docker Compose** – Run and manage containers.
-- **Python and Flask** – Calculate student grade statistics.
+- **Python and Flask** – Manage student grade collection and statistics.
 - **MongoDB** – Store calculated results.
 - **Node.js and Express** – Retrieve results for the dashboard.
-- **HTML, CSS, JavaScript** – Display results on a web page.
+- **HTML, CSS, JavaScript** – For the web pages.
 - **Pytest** – Test Python calculations.
 - **MySQL** – Store student grades.
 - **JWT** – User authentication.
 
 ## How the System Works
 
-The completed project will have four main services:
+The project has four main services:
 
 1. **Authentication Service** – Handles user login.
 2. **Enter Data Service** – Allows users to enter grades into MySQL.
 3. **Analytics Service** – Calculates the average, minimum, maximum, and number of grades.
 4. **Show Results Service** – Displays the calculated statistics on a web dashboard.
 
-Currently, the Analytics Service uses sample grades instead of MySQL.
-
 ## How to Run the Project
 
 **1. Set up environment variables**
 
-Copy `.env.example` to `.env` and enter your own MongoDB username and password.
+Copy `.env.example` to a `.env` file and enter your own usernames and passwords:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Do not upload your `.env` file to GitHub.
+Then, generate a JWT secret with Python and put it in the same `.env` file:
+
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
 
 **2. Start the Docker containers**
 
-```powershell
+```bash
 docker compose up --build -d
 ```
 
 **3. Check the containers**
 
-```powershell
+```bash
 docker compose ps
 ```
 
-Wait until all three containers are healthy.
+Wait until all containers are healthy.
 
-**4. Generate sample statistics**
+**4. Create users**
 
-```powershell
-docker compose exec analytics-service python -c "import urllib.request; print(urllib.request.urlopen(urllib.request.Request('http://localhost:5002/refresh', method='POST')).read().decode())"
+Accounts are created through an administrator CLI command. Public registration is outside this implementation's scope.
+
+```bash
+docker compose exec auth-service flask --app app create-user choose_the_usernames
 ```
 
-**5. Open the dashboard**
+Enter and confirm a password of at least eight characters. The command stores a salted password hash in MySQL. Repeat with another username to create additional accounts.
+
+**5. Enter some grades**
+
+Open http://localhost:8080.
+
+1. Log in using a created account.
+2. Enter a course name.
+3. Enter a grade between 0 and 100, with at most two decimal places.
+4. Click **Save grade** and check the confirmation message.
+5. Click **Log out** when finished.
+
+Each submission creates a new grade row; it does not replace a previous grade for that course.
+
+The browser keeps the access token in JavaScript memory. Refreshing the page clears it. Tokens expire after 15 minutes. 
+Logout clears the browser's copy but does not revoke a token already issued.
+
+**6. View the grades**
 
 Open http://localhost:3000 in your browser.
 
-**6. Stop the containers**
+1. Log in using a created account.
+2. Click **Reload results** to see the latest grades.
+3. Click **Log out** when finished.
 
-```powershell
+**7. Remove the containers**
+
+```bash
 docker compose down
 ```
 
-This keeps the MongoDB data saved in its Docker volume.
+This retains the database volumes. 
+**Do not add `-v` unless you intend to delete the stored users and grades.**
 
-## Testing Completed
+## Running tests
 
-We tested the following:
+Make sure all the containers are running first:
 
-- **Python unit test:** Passed. Verified grade calculations.
-- **MongoDB persistence:** Passed. Data remained after restarting containers.
-- **MongoDB failure test:** Passed. The dashboard displayed an error when MongoDB was unavailable.
-- **MongoDB recovery:** Passed. The dashboard displayed results again after MongoDB restarted.
+```bash
+docker compose up --build -d
+```
 
-## Remaining Tasks
+**Authentication service**
 
-- Connect the Analytics Service to MySQL.
-- Integrate the Enter Data and Authentication services.
-- Add JWT authentication to the dashboard.
-- Improve database security.
-- Add resource limits and more tests.
-- Set up a CI/CD pipeline.
-- Test the complete system.
+```bash
+docker compose run --rm --no-deps -v "./auth-service/tests:/app/tests:ro" auth-service python -m pytest tests -v -p no:cacheprovider
+```
 
-## Notes
+**Enter data web app**
 
-The current project is still under development and only used for local testing only. Authentication and additional security features must still be completed.
+```bash
+docker compose run --rm --no-deps -v "./enter-data/tests:/app/tests:ro" enter-data python -m pytest tests -v -p no:cacheprovider
+```
+
+**Analytics service**
+
+```bash
+docker compose run --rm --no-deps -v "./analytics-service/tests:/app/tests:ro" analytics-service python -m pytest tests -v -p no:cacheprovider
+```
+
+**Show results web app**
+
+```bash
+docker compose run --rm --no-deps -v "./show-results/tests:/app/tests:ro" show-results node --test tests/test_results.js
+```

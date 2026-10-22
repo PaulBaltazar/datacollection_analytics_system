@@ -1,58 +1,148 @@
 import os
 from datetime import datetime, timezone
+
+import pymysql
 from flask import Flask, jsonify
 from pymongo import MongoClient
+from pymongo.errors import PyMongoError
 
 app = Flask(__name__)
-client = MongoClient(os.environ["MONGO_URI"], serverSelectionTimeoutMS=4000)
-collection = client[os.getenv("MONGO_DB", "student_analytics")]["results"]
 
-# Development-only data. Replace with a MySQL query at integration time.
-DEMO_GRADES = [
-    {"user_id": 1, "course_name": "Mathematics", "grade": 65},
-    {"user_id": 1, "course_name": "Mathematics", "grade": 70},
-    {"user_id": 1, "course_name": "Mathematics", "grade": 80},
-    {"user_id": 1, "course_name": "Mathematics", "grade": 90},
-    {"user_id": 1, "course_name": "Mathematics", "grade": 95},
-    {"user_id": 1, "course_name": "Science", "grade": 88},
-    {"user_id": 1, "course_name": "Science", "grade": 92},
-]
+client = MongoClient(
+    os.environ["MONGO_URI"],
+    serverSelectionTimeoutMS=4000,
+    connectTimeoutMS=4000,
+    socketTimeoutMS=4000,
+)
 
-def calculate_results(grades):
-    grouped = {}
-    for row in grades:
-        key = (row["user_id"], row["course_name"])
-        grouped.setdefault(key, []).append(float(row["grade"]))
+collection = client[
+    os.getenv("MONGO_DB", "student_analytics")
+]["dashboards"]
+
+def get_mysql_connection():
+    return pymysql.connect(
+        host=os.environ["MYSQL_HOST"],
+        user=os.environ["MYSQL_USER"],
+        password=os.environ["MYSQL_PASSWORD"],
+        database=os.environ["MYSQL_DATABASE"],
+        cursorclass=pymysql.cursors.DictCursor,
+        connect_timeout=5,
+        read_timeout=5,
+        write_timeout=5,
+    )
+
+
+def read_grades():
+    connection = get_mysql_connection()
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT
+                    u.id AS user_id,
+                    u.username,
+                    g.id AS grade_id,
+                    g.course_name,
+                    g.grade
+                FROM users AS u
+                LEFT JOIN grades AS g ON g.user_id = u.id
+                ORDER BY u.id, g.course_name, g.id
+                """
+            )
+            return cursor.fetchall()
+    finally:
+        connection.close()
+
+
+def calculate_results(rows):
+    users = {}
+
+    for row in rows:
+        user_id = row["user_id"]
+
+        if user_id not in users:
+            users[user_id] = {
+                "user_id": user_id,
+                "username": row["username"],
+                "grades": [],
+            }
+
+        if row["grade_id"] is not None:
+            users[user_id]["grades"].append({
+                "grade_id": row["grade_id"],
+                "course_name": row["course_name"],
+                "grade": float(row["grade"]),
+            })
+
     results = []
-    for (user_id, course), values in grouped.items():
-        results.append({
-            "user_id": user_id,
-            "course_name": course,
+
+    for user in users.values():
+        values = [item["grade"] for item in user["grades"]]
+
+        user["summary"] = {
             "count": len(values),
-            "minimum": min(values),
-            "maximum": max(values),
-            "average": round(sum(values) / len(values), 2),
-            "updated_at": datetime.now(timezone.utc),
-        })
+            "minimum": min(values) if values else None,
+            "maximum": max(values) if values else None,
+            "average": (
+                round(sum(values) / len(values), 2)
+                if values else None
+            ),
+        }
+
+        user["updated_at"] = datetime.now(timezone.utc)
+        results.append(user)
+
     return results
+
 
 @app.get("/health")
 def health():
     try:
+        connection = get_mysql_connection()
+
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+        finally:
+            connection.close()
+
         client.admin.command("ping")
+
         return jsonify(status="ok"), 200
-    except Exception:
+
+    except (pymysql.MySQLError, PyMongoError) as error:
+        app.logger.error(
+            "Health check failed: %s",
+            type(error).__name__,
+        )
         return jsonify(status="unhealthy"), 503
+
 
 @app.post("/refresh")
 def refresh():
-    if os.getenv("DEMO_MODE") != "true":
-        return jsonify(error="MySQL integration not configured yet"), 503
-    results = calculate_results(DEMO_GRADES)
-    for result in results:
-        collection.update_one(
-            {"user_id": result["user_id"], "course_name": result["course_name"]},
-            {"$set": result},
-            upsert=True,
+    try:
+        rows = read_grades()
+        results = calculate_results(rows)
+
+        for result in results:
+            collection.update_one(
+                {"user_id": result["user_id"]},
+                {"$set": result},
+                upsert=True,
+            )
+
+        return jsonify(
+            message="Analytics refreshed from MySQL",
+            grades_read=sum(len(user["grades"]) for user in results),
+            updated=len(results),
+        ), 200
+
+    except (pymysql.MySQLError, PyMongoError) as error:
+        app.logger.error(
+            "Analytics refresh failed: %s",
+            type(error).__name__,
         )
-    return jsonify(message="Demo analytics refreshed", updated=len(results))
+        return jsonify(
+            error="A required database is temporarily unavailable"
+        ), 503

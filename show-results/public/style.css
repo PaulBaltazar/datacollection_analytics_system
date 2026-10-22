@@ -1,41 +1,221 @@
+:root {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  color: #182230;
+  background: #f4f7fb;
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
 
 body {
-  font-family: system-ui;
-  margin: 2rem auto;
-  max-width: 750px;
-  padding: 0 1rem;
-  background: #f7f8fa;
-  color: #182230;
+  max-width: 900px;
+  margin: 3rem auto;
+  padding: 0 1.25rem;
 }
 
 h1 {
-  margin-bottom: 0.2rem;
+  margin: 0 0 2rem;
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  line-height: 1.2;
+  letter-spacing: -0.04em;
 }
 
+h2 {
+  margin: 0 0 1.25rem;
+  font-size: 1.25rem;
+}
+
+/* Login and dashboard panels */
+#loginSection,
+#dashboard,
 .card {
-  background: white;
-  border: 1px solid #dce2e8;
-  border-radius: 12px;
-  padding: 1.25rem;
-  margin: 1rem 0;
+  background: #fff;
+  border: 1px solid #dce4ef;
+  border-radius: 16px;
+  padding: 1.75rem;
+  box-shadow: 0 8px 30px rgb(24 34 48 / 5%);
+}
+
+#loginSection {
+  max-width: 440px;
+}
+
+form {
+  display: grid;
+  gap: 0.5rem;
+}
+
+label {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #b8c5d6;
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+
+input:focus {
+  border-color: #2255b5;
+  outline: 3px solid #dce8ff;
+  outline-offset: 1px;
+}
+
+button {
+  min-height: 44px;
+  padding: 0.75rem 1.1rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #2255b5;
+  color: #fff;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+button:hover:not(:disabled) {
+  background: #194392;
+}
+
+button:focus-visible {
+  outline: 3px solid #2255b5;
+  outline-offset: 3px;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+form button {
+  margin-top: 1rem;
+}
+
+#logout {
+  margin-left: 0.5rem;
+  border-color: #c9d3e0;
+  background: #fff;
+  color: #344054;
+}
+
+#logout:hover {
+  background: #eef2f7;
+}
+
+/* Results table */
+#results {
+  margin-top: 1.5rem;
+  overflow-x: auto;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
+  font-size: 0.95rem;
 }
 
-th, td {
+th,
+td {
+  padding: 1rem;
+  border-bottom: 1px solid #e5eaf1;
+  text-align: right;
+  white-space: nowrap;
+}
+
+th {
+  background: #edf3fc;
+  color: #344054;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+th:first-child,
+td:first-child {
   text-align: left;
-  padding: 0.65rem;
-  border-bottom: 1px solid #eee;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
-button {
-  background: #2255b5;
-  color: white;
-  border: 0;
-  border-radius: 7px;
-  padding: 0.7rem 1rem;
-  cursor: pointer;
+td {
+  font-variant-numeric: tabular-nums;
+}
+
+td:first-child {
+  font-weight: 600;
+}
+
+tbody tr:hover {
+  background: #f7faff;
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* Status messages */
+#message {
+  min-height: 1.5rem;
+  margin-top: 1.25rem;
+  color: #475467;
+  font-size: 0.95rem;
+}
+
+/* Preserve the HTML hidden attribute */
+[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 600px) {
+  body {
+    margin: 1.5rem auto;
+    padding: 0 1rem;
+  }
+
+  #loginSection,
+  #dashboard,
+  .card {
+    padding: 1.25rem;
+  }
+
+  th,
+  td {
+    padding: 0.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
+}
+
+/* Username and course are text; grade is numeric. */
+th:nth-child(2),
+td:nth-child(2) {
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+#results > .card {
+  margin-top: 1.5rem;
+  box-shadow: none;
+}
+
+#results > .card p:last-child {
+  margin-bottom: 0;
+  font-weight: 600;
 }

@@ -1,5 +1,25 @@
-
 services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - backend
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'MYSQL_PWD="$${MYSQL_PASSWORD}" mysql --protocol=TCP -h 127.0.0.1 -u "$${MYSQL_USER}" "$${MYSQL_DATABASE}" -e "SELECT 1"'
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   mongodb:
     image: mongo:7
     environment:
@@ -17,13 +37,68 @@ services:
       timeout: 5s
       retries: 10
 
+  auth-service:
+    build: ./auth-service
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - backend
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=4)"
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  enter-data:
+    build: ./enter-data
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      AUTH_URL: http://auth-service:5000
+    depends_on:
+      mysql:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:5000"
+    networks:
+      - backend
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=4)"
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   analytics-service:
     build: ./analytics-service
     environment:
+      MYSQL_HOST: mysql
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MONGO_URI: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017/?authSource=admin
       MONGO_DB: student_analytics
-      DEMO_MODE: "true"
     depends_on:
+      mysql:
+        condition: service_healthy
       mongodb:
         condition: service_healthy
     networks:
@@ -35,17 +110,22 @@ services:
         - -c
         - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5002/health', timeout=3)"
       interval: 15s
-      timeout: 5s
+      timeout: 12s
       retries: 5
 
   show-results:
     build: ./show-results
     environment:
+      AUTH_URL: http://auth-service:5000
+      ANALYTICS_URL: http://analytics-service:5002
       MONGO_URI: mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017/?authSource=admin
       MONGO_DB: student_analytics
-      DEMO_MODE: "true"
     depends_on:
       mongodb:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      analytics-service:
         condition: service_healthy
     ports:
       - "127.0.0.1:3000:3000"
@@ -65,4 +145,5 @@ networks:
   backend:
 
 volumes:
+  mysql-data:
   mongo_data:

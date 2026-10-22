@@ -5,4 +5,4 @@ RUN pip install --no-cache-dir -r requirements.txt && useradd -r -u 10001 appuse
 COPY app.py .
 USER appuser
 EXPOSE 5002
-CMD ["gunicorn", "--bind", "0.0.0.0:5002", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5002", "--access-logfile", "-", "--error-logfile", "-", "app:app"]
