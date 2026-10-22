@@ -108,41 +108,49 @@ Make sure all the containers are running first:
 docker compose up --build -d
 ```
 
-**Authentication service**
+**Authentication service tests**
 
 ```bash
 docker compose run --rm --no-deps -v "./auth-service/tests:/app/tests:ro" auth-service python -m pytest tests -v -p no:cacheprovider
 ```
 
+**Authentication service healthcheck**
+
 ```bash
 docker compose exec auth-service python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:5000/health').read().decode())"
 ```
 
-**Enter data web app**
+**Enter data web app tests**
 
 ```bash
 docker compose run --rm --no-deps -v "./enter-data/tests:/app/tests:ro" enter-data python -m pytest tests -v -p no:cacheprovider
 ```
 
+**Enter data web app healthcheck**
+
 ```powershell
 curl.exe -i http://localhost:8080/health
 ```
 
-**Analytics service**
+**Analytics service tests**
 
 ```bash
 docker compose run --rm --no-deps -v "./analytics-service/tests:/app/tests:ro" analytics-service python -m pytest tests -v -p no:cacheprovider
 ```
 
+**Analytics service healthcheck**
+
 ```bash
 docker compose exec analytics-service python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:5002/health', timeout=3).read().decode())"
 ```
 
-**Show results web app**
+**Show results web app tests**
 
 ```bash
 docker compose run --rm --no-deps -v "./show-results/tests:/app/tests:ro" show-results node --test tests/test_results.js
 ```
+
+**Show results web app healthcheck**
 
 ```powershell
 curl.exe -i http://localhost:3000/health
