@@ -140,3 +140,57 @@ def test_average_uses_individual_grades():
     # (60 + 80 + 100) / 3 = 80.
     # Averaging the two course averages would incorrectly give 85.
     assert result["summary"]["average"] == 80
+
+# ---- per-user refresh (performance improvement) ----
+
+from unittest.mock import MagicMock
+
+import pytest
+
+import app as service
+
+
+@pytest.fixture
+def client():
+    service.app.config["TESTING"] = True
+    with service.app.test_client() as client:
+        yield client
+
+
+@pytest.mark.parametrize("bad_id", ["1", 0, -5, True, 1.5])
+def test_refresh_rejects_invalid_user_id(client, monkeypatch, bad_id):
+    read = MagicMock()
+    monkeypatch.setattr(service, "read_grades", read)
+
+    response = client.post("/refresh", json={"user_id": bad_id})
+
+    assert response.status_code == 400
+    read.assert_not_called()
+
+
+def test_refresh_one_user_only_reads_that_user(client, monkeypatch):
+    read = MagicMock(return_value=[{
+        "user_id": 7, "username": "student7",
+        "grade_id": 1, "course_name": "Math", "grade": 90,
+    }])
+    collection = MagicMock()
+    monkeypatch.setattr(service, "read_grades", read)
+    monkeypatch.setattr(service, "collection", collection)
+
+    response = client.post("/refresh", json={"user_id": 7})
+
+    assert response.status_code == 200
+    read.assert_called_once_with(7)
+    assert response.json["updated"] == 1
+    collection.update_one.assert_called_once()
+
+
+def test_refresh_without_body_still_refreshes_everyone(client, monkeypatch):
+    read = MagicMock(return_value=[])
+    monkeypatch.setattr(service, "read_grades", read)
+    monkeypatch.setattr(service, "collection", MagicMock())
+
+    response = client.post("/refresh")
+
+    assert response.status_code == 200
+    read.assert_called_once_with(None)

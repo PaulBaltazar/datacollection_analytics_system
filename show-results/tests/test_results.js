@@ -331,3 +331,13 @@ test('missing dashboard returns an empty result', async () => {
   assert.equal(response.body.summary.count, 0);
   assert.equal(response.body.summary.average, null);
 });
+test('refresh asks analytics to recalculate only the verified user', async () => {
+  await post('/api/results/refresh', { user_id: 999 }, 'test-token');
+
+  const refreshCall = fetchMock.mock.calls.find(
+    call => call.arguments[0].endsWith('/refresh')
+  );
+
+  assert.ok(refreshCall, 'analytics /refresh was called');
+  assert.deepEqual(JSON.parse(refreshCall.arguments[1].body), { user_id: 1 });
+});

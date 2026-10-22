@@ -99,8 +99,11 @@ async function requireLogin(req, res, next) {
 // Refresh analytics, then return the authenticated user's results.
 app.post('/api/results/refresh', requireLogin, async (req, res) => {
   try {
+    // Only recalculate the logged-in user's results, not every user's.
     const response = await fetch(`${analyticsUrl}/refresh`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: req.userId }),
       signal: AbortSignal.timeout(30000)
     });
 
